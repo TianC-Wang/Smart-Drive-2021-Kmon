@@ -1,7 +1,7 @@
-//#include "SmartDrive.h"
+#include "SmartDrive.h"
 
 const int expect = 550;
-const int kp = 3;
+const int kp = 1.8;
 
 int main(void) {
 	printf("³É¹¦£¡");
