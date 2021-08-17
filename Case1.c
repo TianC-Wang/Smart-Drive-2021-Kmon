@@ -2,27 +2,31 @@
 #include "Kmon.h"
 #endif
 
-void PassWhiteLine();
-int LookupWhiteLine();//return 1==Success; 0==Failed
-
 #define Increase 1
 #define Decrease 2
 
-const int eadcTreshold = 180;
+//For the use of adcTreshold
+const int adcTreshold = 180;
 
-void PassWhiteLine() {
+int adcSensor[6];
+
+void UpdateadcSensor(void) {
+	for (int a = 0; a < 6; a++) adcSensor[a] = getadc(a + 1);
+}
+
+void PassWhiteLine(void) {
 	while (1) {
 		int count = 0;
 		for (int a = 2; a <= 5; a++) {
-			if (geteadc(a) <= eadcTreshold) count++;
+			if (getadc(a) <= adcTreshold) count++;
 		}
-		if (count >= 4) break;
+		if (count >= 2) break;
 	}
 	return;
 }
 
 //return 1==Success; 0==Failed
-int LookupWhiteLine() {
+int LookupWhiteLineWithDistance(void) {
 	//Stop both Motor
 	motor(1, 0);
 	motor(2, 0);
@@ -63,4 +67,32 @@ int LookupWhiteLine() {
 		}
 	}
 	return ReturnValue;
+}
+
+
+// 他也曾鲜衣怒马，望尽长安花
+int LookupWhiteLineWithSenior(void) {
+	motor(1, 0); motor(2, 0);
+	UpdateadcSensor();
+	if (adcSensor[0] < adcTreshold && adcSensor[1] < adcTreshold && adcSensor[2] < adcTreshold &&
+		adcSensor[3] < adcTreshold && adcSensor[4] < adcTreshold && adcSensor[5] < adcTreshold) {
+		return 0;
+	}
+	if (adcSensor[0] >= adcTreshold) {
+		if (adcSensor[5] < adcTreshold) {
+			motor(2, 100);
+			wait(0.2);//Still need TESTING!
+			motor(2, 0);
+		}
+	}
+	else if (adcSensor[5] >= adcTreshold) {
+		if (adcSensor[0] < adcTreshold) {
+			motor(2, 100);
+			wait(0.2);//Still need TESTING!
+			motor(2, 0);
+		}
+	}
+	else if (adcSensor[3] >= adcTreshold) {
+		//Still Porcessing
+	}
 }
