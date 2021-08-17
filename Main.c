@@ -1,54 +1,66 @@
 #include "Kmon.h"
 
-/* ----- Define ----- */
-
-#define getGrayscale(index)   geteadc(index)
-#define getDistance(index)    getadc(index)
-
 /* ----- Const ----- */
 
-const int left3rdGrayscale  = 1;
-const int left2ndGrayscale  = 2;
-const int left1stGrayscale  = 3;
-const int right1stGrayscale = 4;
-const int right2ndGrayscale = 5;
-const int right3rdGrayscale = 6;
-const int rightSonar        = 3;
-const int leftSonar         = 4;
-const int frontLeftSonar    = 5;
-
-const int expect            = 550;
-const int kp                = 1.8;
+/// @brief The 3rd Grayscale of Left.
+const int gsL3       = 1;
+/// @brief The 2nd Grayscale of Left.
+const int gsL2       = 2;
+/// @brief The 1st Grayscale of Left.
+const int gsL1       = 3;
+/// @brief The 1st Grayscale of Right.
+const int gsR1       = 4;
+/// @brief The 2nd Grayscale of Right.
+const int gsR2       = 5;
+/// @brief The 3rd Grayscale of Right.
+const int gsR3       = 6;
+/// @brief The Sonar of Right.
+const int snR        = 3;
+/// @brief The Sonar of Left.
+const int snL        = 4;
+/// @brief The Sonar of Front.
+const int snF        = 5;
+/// @brief The Expected Position of The Cart on Road.
+const int expect     = 550;
+/// @brief The Proportion The Cart Clear its Offset from The Expected Position on Road.
+const int kp         = 1.8;
+/// @brief Get The Grayscale Value of a Sensor.
+/// @param index The Target Sensor Index.
+void (*const getGrayscale)(int index) = geteadc;
+/// @brief Get The Distance Value of a Sonar.
+/// @param index The Target Sonar Index.
+void (*const getDistance)(int index) = getadc;
 
 /* ----- Array ----- */
 
-short int motors[2]         = { 0, 0 };
+/// @brief The Speed of Drivetrain Motors.
+short int driveTrain[2]  = { 0, 0 };
 
 /* ---- Function ----- */
 
-// @brief A Frame for Drivetrain.
-void driveFrame(void) { go(motors[0], motors[1]); }
+/// @brief A Frame for Drivetrain.
+void driveFrame(void) { go(driveTrain[0], driveTrain[1]); }
 
-// @brief Stop Drivetrain. 
+/// @brief Stop Drivetrain. 
 void stopDrivetrain(void)
 {
-    motors[0] = 0;
-    motors[1] = 0;
+    driveTrain[0] = 0;
+    driveTrain[1] = 0;
     driveFrame();
 }
 
-// @brief Set Drivetrain Speed.
-// @param _LSpeed Left Drivetrain Speed.
-// @param _RSpeed Right Drivetrain Speed.
+/// @brief Set Drivetrain Speed.
+/// @param _LSpeed Left Drivetrain Speed.
+/// @param _RSpeed Right Drivetrain Speed.
 void setDrivetrainSpeed(short _LSpeed, short _RSpeed)
 {
-    motors[0] = _LSpeed;
-    motors[1] = _RSpeed;
+    driveTrain[0] = _LSpeed;
+    driveTrain[1] = _RSpeed;
     driveFrame();
 }
 
-// @brief Entrance of The Program.
-// @return Status Code.
+/// @brief Entrance of The Program.
+/// @return Status Code.
 int main(void) {
 	printf("³É¹¦£¡");
 	while (1) {
