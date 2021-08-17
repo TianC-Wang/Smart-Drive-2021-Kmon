@@ -1,5 +1,4 @@
 #ifdef WIN32
-#include "Case1.h"
 #include "Kmon.h"
 #endif
 
@@ -32,6 +31,9 @@ int LookupWhiteLine() {
 			eadc3 = geteadc(3);
 			//Here should have A TRY that if Value=100 Could WORK!
 			motor(1, 100);
+		}
+		else if (eadc3 != 0 && eadc3p == 0) {
+
 		}
 	}
 }
