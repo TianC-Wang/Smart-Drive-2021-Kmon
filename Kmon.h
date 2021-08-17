@@ -1,3 +1,7 @@
+#define bool char
+#define true 1
+#define false 0
+
 // @brief Clear LCD Screen.
 extern void cls(void);
 

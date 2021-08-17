@@ -4,11 +4,8 @@
 
 #define getGrayscale(index)   geteadc(index)
 #define getDistance(index)    getadc(index)
-#define bool                  char
-#define true                  1
-#define false                 0
 
-/* ----- Const ----- */
+/* ----- Const ----- 
 
 const int left3rdGrayscale  = 1;
 const int left2ndGrayscale  = 2;
@@ -24,44 +21,34 @@ const int frontLeftSonar    = 5;
 
 short int motors[2]         = { 0, 0 };
 
-/* ----- Function Declaration ----- */
+/* ---- Function ----- */
 
 // @brief A Frame for Drivetrain.
-void driveFrame(void);
-
-// @brief Stop Drivetrain. 
-void stop(void);
-
-// @brief Set Drivetrain Speed.
-// @param _LSpeed Left Drivetrain Speed.
-// @param _RSpeed Right Drivetrain Speed.
-void setSpeed(short _LSpeed, short _RSpeed);
-
-// @brief Entrance of The Program.
-// @return Status Code.
-int main(void);
-
-/* ---- Functions Definition ----- */
-
 void driveFrame(void) { go(motors[0], motors[1]); }
 
-void stop(void)
+// @brief Stop Drivetrain. 
+void stopDrivetrain(void)
 {
     motors[0] = 0;
     motors[1] = 0;
     driveFrame();
 }
 
-void setSpeed(short _LSpeed, short _RSpeed)
+// @brief Set Drivetrain Speed.
+// @param _LSpeed Left Drivetrain Speed.
+// @param _RSpeed Right Drivetrain Speed.
+void setDrivetrainSpeed(short _LSpeed, short _RSpeed)
 {
     motors[0] = _LSpeed;
     motors[1] = _RSpeed;
     driveFrame();
 }
 
+// @brief Entrance of The Program.
+// @return Status Code.
 int main(void)
 {
-    go(250, 250);
+    setDrivetrainSpeed(250, 150);
     wait(3.f);
     stop();
     return 0;
