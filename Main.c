@@ -3,33 +3,35 @@
 /* ----- Const ----- */
 
 /// @brief The 3rd Grayscale of Left.
-const int gsL3       = 1;
+const int gsL3                        = 1;
 /// @brief The 2nd Grayscale of Left.
-const int gsL2       = 2;
+const int gsL2                        = 2;
 /// @brief The 1st Grayscale of Left.
-const int gsL1       = 3;
+const int gsL1                        = 3;
 /// @brief The 1st Grayscale of Right.
-const int gsR1       = 4;
+const int gsR1                        = 4;
 /// @brief The 2nd Grayscale of Right.
-const int gsR2       = 5;
+const int gsR2                        = 5;
 /// @brief The 3rd Grayscale of Right.
-const int gsR3       = 6;
+const int gsR3                        = 6;
 /// @brief The Sonar of Right.
-const int snR        = 3;
+const int snR                         = 3;
 /// @brief The Sonar of Left.
-const int snL        = 4;
+const int snL                         = 4;
 /// @brief The Sonar of Front.
-const int snF        = 5;
+const int snF                         = 5;
 /// @brief The Expected Position of The Cart on Road.
-const int expect     = 550;
+const int expect                      = 550;
 /// @brief The Proportion The Cart Clear its Offset from The Expected Position on Road.
-const int kp         = 1.8;
+const int kp                          = 1.8;
 /// @brief Get The Grayscale Value of a Sensor.
 /// @param index The Target Sensor Index.
-void (*const getGrayscale)(int index) = geteadc;
+/// @return Grayscale Value(0~1023).
+int (*const getGrayscale)(int index)  = geteadc;
 /// @brief Get The Distance Value of a Sonar.
 /// @param index The Target Sonar Index.
-void (*const getDistance)(int index) = getadc;
+/// @return Distance Value(0~1023).
+int (*const getDistance)(int index)   = getadc;
 
 /* ----- Array ----- */
 
