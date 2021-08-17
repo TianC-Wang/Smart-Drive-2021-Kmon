@@ -14,7 +14,7 @@ void PassWhiteLine() {
 		for (int a = 2; a <= 5; a++) {
 			if (geteadc(a) <= eadcTreshold) count++;
 		}
-		if count >= 4 break;
+		if (count >= 4) break;
 	}
 	return;
 }
@@ -24,4 +24,14 @@ int LookupWhiteLine() {
 	//Stop both Motor
 	motor(1, 0);
 	motor(2, 0);
+	int eadc3 = 0;
+	int eadc3p = 0;
+	int status;
+	for (int tries = 0; tries < 1000; tries++) {
+		if (eadc3 == 0) {
+			eadc3 = geteadc(3);
+			//Here should have A TRY that if Value=100 Could WORK!
+			motor(1, 100);
+		}
+	}
 }
