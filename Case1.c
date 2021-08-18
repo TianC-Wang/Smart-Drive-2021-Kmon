@@ -78,21 +78,54 @@ int LookupWhiteLineWithSenior(void) {
 		adcSensor[3] < adcTreshold && adcSensor[4] < adcTreshold && adcSensor[5] < adcTreshold) {
 		return 0;
 	}
-	if (adcSensor[0] >= adcTreshold) {
-		if (adcSensor[5] < adcTreshold) {
+LookupStarted:
+	if (adcSensor[1] >= adcTreshold) {
+		if (adcSensor[4] < adcTreshold) {
 			motor(2, 100);
-			wait(0.2);//Still need TESTING!
-			motor(2, 0);
+			//Tries should have A TEST! (Value of a)
+			for (int a = 0; a < 50; a++) {
+				if (getadc(5) >= adcTreshold) {
+					motor(2, 0);
+					return 1;
+				}
+			}
+			motor(2, -100);
+			for (int a = 0; a < 100; a++) {
+				if (getadc(5) >= adcTreshold) {
+					motor(2, 0);
+					return 1;
+				}
+			}
 		}
 	}
-	else if (adcSensor[5] >= adcTreshold) {
-		if (adcSensor[0] < adcTreshold) {
-			motor(2, 100);
-			wait(0.2);//Still need TESTING!
-			motor(2, 0);
+	else if (adcSensor[4] >= adcTreshold) {
+		if (adcSensor[1] < adcTreshold) {
+			motor(1, 100);
+			//Tries should have A TEST! (Value of a)
+			for (int a = 0; a < 50; a++) {
+				if (getadc(2) >= adcTreshold) {
+					motor(1, 0);
+					return 1;
+				}
+			}
+			motor(2, -100);
+			for (int a = 0; a < 100; a++) {
+				if (getadc(2) >= adcTreshold) {
+					motor(1, 0);
+					return 1;
+				}
+			}
 		}
 	}
-	else if (adcSensor[3] >= adcTreshold) {
-		//Still Porcessing
+	else {
+		go(100, 100);
+		for (int a = 0; a < 50; a++) {
+			UpdateadcSensor();
+			if (adcSensor[1] >= adcTreshold || adcSensor[4] >= adcTreshold) {
+				goto LookupStarted;
+			}
+		}
 	}
+	motor(1, 0); motor(2, 0);
+	return 0;
 }
