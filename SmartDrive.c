@@ -34,6 +34,14 @@ int (*const getDistance)(int index)   = getadc;
 #pragma endregion
 
 #pragma region /* ----- Header ----- */
+/// @brief Get The Absolute Value.
+float absf(float _Num)
+{
+    if (_Num > 0)
+        return _Num;
+    return -_Num;
+}
+
 /// @brief Drivetrain Speeds.
 struct
 {
@@ -66,8 +74,14 @@ struct asyncFunc
 void driveAsync(unsigned int _This)
 {
     go((int)drivetrain.lSpeed, (int)drivetrain.rSpeed);
-    drivetrain.lSpeed += (drivetrain.lTgtSpeed - drivetrain.lSpeed) * drivetrain.ratio;
-    drivetrain.rSpeed += (drivetrain.rTgtSpeed - drivetrain.rSpeed) * drivetrain.ratio;
+    if (absf(drivetrain.lSpeed - drivetrain.lTgtSpeed) < 20.f)
+        drivetrain.lSpeed = drivetrain.lTgtSpeed;
+    else
+        drivetrain.lSpeed += (drivetrain.lTgtSpeed - drivetrain.lSpeed) * drivetrain.ratio;
+    if (absf(drivetrain.rSpeed - drivetrain.rTgtSpeed) < 20.f)
+        drivetrain.rSpeed = drivetrain.rTgtSpeed;
+    else
+        drivetrain.rSpeed += (drivetrain.rTgtSpeed - drivetrain.rSpeed) * drivetrain.ratio;
 }
 
 /// @brief The Pool of The Async Function.
@@ -130,7 +144,7 @@ int main(void)
     waitForFrames(2000);
     drivetrain.lTgtSpeed = 0;
     drivetrain.rTgtSpeed = 0;
-    waitForFrames(1000);
+    waitForFrames(1200);
     printf("Done!");
     return 0;
 }
