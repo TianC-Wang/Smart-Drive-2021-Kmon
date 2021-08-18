@@ -14,15 +14,21 @@ void UpdateadcSensor(void) {
 	for (int a = 0; a < 6; a++) adcSensor[a] = getadc(a + 1);
 }
 
-void PassWhiteLine(void) {
-	while (1) {
+//return 1==Success; 0==Failed
+int PassWhiteLine(int TriesLimited) {
+	for (int a = 0; a < TriesLimited; a++) {
+		UpdateadcSensor();
 		int count = 0;
-		for (int a = 2; a <= 5; a++) {
-			if (getadc(a) <= adcTreshold) count++;
+		if (adcSensor[1] <= adcTreshold) count++;
+		if (adcSensor[2] <= adcTreshold) count++;
+		if (adcSensor[3] <= adcTreshold) count++;
+		if (adcSensor[4] <= adcTreshold) count++;
+		//Can edit the Sensor nunmber of detected
+		if (count >= 1) {
+			return 1;
 		}
-		if (count >= 2) break;
 	}
-	return;
+	return 0;
 }
 
 //return 1==Success; 0==Failed
@@ -74,43 +80,43 @@ int LookupWhiteLineWithDistance(void) {
 int LookupWhiteLineWithSenior(void) {
 	motor(1, 0); motor(2, 0);
 	UpdateadcSensor();
-	if (adcSensor[0] < adcTreshold && adcSensor[1] < adcTreshold && adcSensor[2] < adcTreshold &&
-		adcSensor[3] < adcTreshold && adcSensor[4] < adcTreshold && adcSensor[5] < adcTreshold) {
+	if (adcSensor[0] > adcTreshold && adcSensor[1] > adcTreshold && adcSensor[2] > adcTreshold &&
+		adcSensor[3] > adcTreshold && adcSensor[4] > adcTreshold && adcSensor[5] > adcTreshold) {
 		return 0;
 	}
 LookupStarted:
-	if (adcSensor[1] >= adcTreshold) {
-		if (adcSensor[4] < adcTreshold) {
+	if (adcSensor[1] <= adcTreshold) {
+		if (adcSensor[4] > adcTreshold) {
 			motor(2, 100);
 			//Tries should have A TEST! (Value of a)
 			for (int a = 0; a < 50; a++) {
-				if (getadc(5) >= adcTreshold) {
+				if (getadc(5) <= adcTreshold) {
 					motor(2, 0);
 					return 1;
 				}
 			}
 			motor(2, -100);
 			for (int a = 0; a < 100; a++) {
-				if (getadc(5) >= adcTreshold) {
+				if (getadc(5) <= adcTreshold) {
 					motor(2, 0);
 					return 1;
 				}
 			}
 		}
 	}
-	else if (adcSensor[4] >= adcTreshold) {
-		if (adcSensor[1] < adcTreshold) {
+	else if (adcSensor[4] <= adcTreshold) {
+		if (adcSensor[1] > adcTreshold) {
 			motor(1, 100);
 			//Tries should have A TEST! (Value of a)
 			for (int a = 0; a < 50; a++) {
-				if (getadc(2) >= adcTreshold) {
+				if (getadc(2) <= adcTreshold) {
 					motor(1, 0);
 					return 1;
 				}
 			}
 			motor(2, -100);
 			for (int a = 0; a < 100; a++) {
-				if (getadc(2) >= adcTreshold) {
+				if (getadc(2) <= adcTreshold) {
 					motor(1, 0);
 					return 1;
 				}
@@ -121,7 +127,7 @@ LookupStarted:
 		go(100, 100);
 		for (int a = 0; a < 50; a++) {
 			UpdateadcSensor();
-			if (adcSensor[1] >= adcTreshold || adcSensor[4] >= adcTreshold) {
+			if (adcSensor[1] <= adcTreshold || adcSensor[4] <= adcTreshold) {
 				goto LookupStarted;
 			}
 		}
