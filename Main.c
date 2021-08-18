@@ -1,6 +1,6 @@
 #include "Kmon.h"
 
-/* ----- Const ----- */
+#pragma region /* ----- Const ----- */
 
 /// @brief The 3rd Grayscale of Left.
 const int gsL3                        = 1;
@@ -32,51 +32,107 @@ int (*const getGrayscale)(int index)  = geteadc;
 /// @param index The Target Sonar Index.
 /// @return Distance Value(0~1023).
 int (*const getDistance)(int index)   = getadc;
+#pragma endregion
 
-/* ----- Array ----- */
+#pragma region /* ----- Struct ----- */
+
+/// @brief The Speed Target of Drivetrain.
+struct
+{
+	/// @brief The Linear Ratio.
+	float ratio;
+	/// @brief The Target Speed.
+	short int targetSpeed[2];
+} lerpSpeed = { .2f, { 0, 0 } };
+
+/// @brief A Async Function.
+struct asyncFunc
+{
+	bool running;
+	unsigned int sleep;
+	void (*func)(void);
+};
+#pragma endregion
+
+#pragma region /* ----- Async Function ----- */
 
 /// @brief The Speed of Drivetrain Motors.
-short int driveTrain[2]  = { 0, 0 };
+short int drivetrain[2]        = { 0, 0 };
+/// @brief Drivetrain Speed Adjust, EVERY-FRAME CALL.
+void driveFrame(void)
+{
+	go(drivetrain[0], drivetrain[1]);
+	drivetrain[0] += (lerpSpeed.targetSpeed[0] - drivetrain[0]) * lerpSpeed.ratio;
+	drivetrain[1] += (lerpSpeed.targetSpeed[1] - drivetrain[1]) * lerpSpeed.ratio;
+}
+/// @brief The Pool of Async Functions.
+struct asyncFunc asyncFuncs[1] =
+{
+	{ true, 0, driveFrame }
+};
+#pragma endregion
 
-/* ---- Function ----- */
-
-/// @brief A Frame for Drivetrain.
-void driveFrame(void) { go(driveTrain[0], driveTrain[1]); }
+#pragma region /* ----- Function ----- */
 
 /// @brief Stop Drivetrain. 
-void stopDrivetrain(void)
+void stopDrivetrain_HARD(void)
 {
-    driveTrain[0] = 0;
-    driveTrain[1] = 0;
-    driveFrame();
+	drivetrain[0] = drivetrain[1]
+	= lerpSpeed.targetSpeed[0] = lerpSpeed.targetSpeed[1] = 0;
+}
+
+/// @brief Stop Drivetrain.
+void stopDrivetrain(void) { lerpSpeed.targetSpeed[0] = lerpSpeed.targetSpeed[1] = 0; }
+
+/// @brief Set Drivetrain Speed.
+/// @param _LSpeed Left Drivetrain Speed.
+/// @param _RSpeed Right Drivetrain Speed.
+void setDrivetrainSpeed_HARD(short _LSpeed, short _RSpeed)
+{
+    drivetrain[0] = lerpSpeed.targetSpeed[0] = _LSpeed;
+    drivetrain[1] = lerpSpeed.targetSpeed[1] = _RSpeed;
 }
 
 /// @brief Set Drivetrain Speed.
 /// @param _LSpeed Left Drivetrain Speed.
 /// @param _RSpeed Right Drivetrain Speed.
-void setDrivetrainSpeed(short _LSpeed, short _RSpeed)
+void setDrivetrainSpeed(short _LSpeed, short int _RSpeed)
 {
-    driveTrain[0] = _LSpeed;
-    driveTrain[1] = _RSpeed;
-    driveFrame();
+	lerpSpeed.targetSpeed[0] = _LSpeed;
+	lerpSpeed.targetSpeed[1] = _RSpeed;
 }
 
+/// @brief Delay of Main Process.
+/// @param _Millisec The Delay Length in Milliseconds.
+void delay(unsigned int _Millisec)
+{
+	unsigned int i;
+	unsigned int j;
+	for (i = 0; i < _Millisec; i++)
+	{
+		for (j = 0; j < sizeof(asyncFuncs) / sizeof(struct asyncFunc); j++)
+			if (asyncFuncs[j].running)
+				asyncFuncs[j].func();
+			else if (asyncFuncs[j].sleep > 0)
+				asyncFuncs[j].sleep--;
+			else if (!asyncFuncs[j].sleep)
+				asyncFuncs[j].running = true;
+		wait(.001f);
+	}
+}
+
+void asyncFuncSleep(struct asyncFunc* _Func, unsigned int _Millisec)
+{
+	_Func->sleep = _Millisec;
+	_Func->running = false;
+}
+#pragma endregion
+
+#pragma region /* ----- Main ----- */
 /// @brief Entrance of The Program.
 /// @return Status Code.
-int main(void) {
-	printf("³É¹¦£¡");
-	while (1) {
-		/*
-		cls();
-		printf("%3d, %3d, %3d, %3d, %3d, %3d\n%3d, %3d, %3d", geteadc(1), geteadc(2), geteadc(3),
-			geteadc(4), geteadc(5), geteadc(6), getadc(3), getadc(4), getadc(5));
-		*/
-		int adc3 = getadc(3);
-		int p = expect - adc3;
-		if (p > 100) p = 100;
-		motor(1, p * kp + 500);
-		motor(2, p * -kp + 500);
-	}
+int main(void) // use delay() instead of wait().
+{
 	return 0;
 }
-
+#pragma endregion
