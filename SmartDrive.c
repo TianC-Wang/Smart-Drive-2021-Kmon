@@ -176,6 +176,10 @@ void sleepAsyncFunc(unsigned int _Index, unsigned int _FrameCount)
 /// @param _RSpeed Right Speed.
 void setSpeed(float _LSpeed, float _RSpeed)
 {
+    if (!((int)_LSpeed || (int)_RSpeed))
+        stopAsyncFunc(safeguard);
+    else
+        resumeAsyncFunc(safeguard);
     stopAsyncFunc(walltracker);
     resumeAsyncFunc(driver);
     drivetrain.lTgtSpeed = _LSpeed;
@@ -187,6 +191,10 @@ void setSpeed(float _LSpeed, float _RSpeed)
 /// @param _RSpeed Right Speed.
 void setSpeed_HARD(float _LSpeed, float _RSpeed)
 {
+    if (!((int)_LSpeed || (int)_RSpeed))
+        stopAsyncFunc(safeguard);
+    else
+        resumeAsyncFunc(safeguard);
     stopAsyncFunc(walltracker);
     resumeAsyncFunc(driver);
     drivetrain.lSpeed = drivetrain.lTgtSpeed = _LSpeed;
