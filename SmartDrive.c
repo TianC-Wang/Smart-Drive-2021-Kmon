@@ -22,11 +22,11 @@ const int snF                         = 5;
 /// @brief Get The Grayscale Value of a Sensor.
 /// @param _Index The Target Sensor Index.
 /// @return Grayscale Value(0~1023).
-int (*const getGrayscale)(int _Index)  = geteadc;
+int (*const getGrayscale)(int _Index) = geteadc;
 /// @brief Get The Distance Value of a Sonar.
 /// @param _Index The Target Sonar Index.
 /// @return Distance Value(0~1023).
-int (*const getDistance)(int _Index)   = getadc;
+int (*const getDistance)(int _Index)  = getadc;
 #pragma endregion
 
 #pragma region /* ----- Header ----- */
@@ -202,6 +202,7 @@ void setWallTrackingSpeed(float _Speed)
 }
 
 /// @brief Change Wall Tracking Speed Directly.
+/// @param _Speed The Speed.
 void setWallTrackingSpeed_HARD(float _Speed)
 {
     setSpeed_HARD(_Speed, _Speed);
@@ -234,6 +235,7 @@ void wallTrackAsync(unsigned int _This)
     setSpeed(walltracking.baseSpeed - 1.25f * walltracking.err * walltracking.kp + (walltracking.preErr - walltracking.err) * walltracking.kd * .75f,
         walltracking.baseSpeed + .75f * walltracking.err * walltracking.kp - (walltracking.preErr - walltracking.err) * walltracking.kd * 1.25f);
     walltracking.preErr = walltracking.err;
+    resumeAsyncFunc(walltracker);
 }
 
 /// @brief QR Code Monitor.
@@ -247,10 +249,11 @@ void monitorAsync(unsigned int _This)
 void safeAsync(unsigned int _This)
 {
     if (getDistance(snF) > safeoptions.safeDistance)
-        if (asyncFuncPool[walltracker].isRunning)
-            setWallTrackingSpeed_HARD(0);
-        else
-            setSpeed_HARD(0, 0);
+    {
+        go(0, 0);
+        while (getDistance(snF) > safeoptions.safeDistance)
+            wait(.001f);
+    }
 }
 
 /// @brief Grab Object.
@@ -271,7 +274,7 @@ void start(void)
 {
     driver = startAsyncFunc(driveAsync);
     walltracker = startAsyncFunc(wallTrackAsync);
-    stopAllAsyncFunc();
+    safeguard = startAsyncFunc(safeAsync);
 }
 
 /// @brief Run a Frame.
@@ -316,12 +319,14 @@ void waitForClick(void)
 /// @param _Val The Threshold Value.
 void waitForSonarPass(unsigned int _Index, float _Val)
 {
+    stopAsyncFunc(safeguard);
     if (getDistance(_Index) > _Val)
         while(getDistance(_Index) > _Val)
             frame();
     else
         while(getDistance(_Index) < _Val)
             frame();
+    resumeAsyncFunc(safeguard);
 }
 
 /// @brief Wait The Grayscale to Cross a Threshold Value.
@@ -348,27 +353,26 @@ int main(void)
         for (i = 0; i < 5; i++)
             cleanAsyncFunc(i);
         cls();
-        printf("\n\n\nPress Button\nto Start...\n\n信仰与悸动之间的，\n便是你。");
+        printf("\n\n\n那信仰与依恋之间的，\n便是你，公主\n艾瑟依拉姆\n薇瑟\n艾莉欧斯亚。");
         waitForClick();
         cls();
-        driver = startAsyncFunc(driveAsync);
+        start();
 
         /* ---------- */
 
-        waitForFrames(1000);
+        setWallTrackingSpeed(400.f);
+        waitForSonarPass(snF, 400.f);
+        setSpeed(-200.f, 200.f);
+        waitForSonarPass(snF, 300.f);
         setWallTrackingSpeed(300.f);
-        wc = startAsyncFunc(wallTrackAsync);
-        waitForFrames(1000);
-        setWallTrackingSpeed(.0f);
-        waitForFrames(3000);
-        stopAsyncFunc(wc);
-        setSpeed(0.f, 0.f);
+        waitForSonarPass(snF, 400.f);
+        setSpeed(.0f, .0f);
         waitForComplete(driver);
 
         /* ---------- */
 
         cls();
-        printf("\n\n\nProgram Ended.\n\n\n消散在宇宙中，\n或许不是你我的终究。");
+        printf("\n\n\n\n蓝色的玫瑰，折射的天空，\n消散的，骑士\n斯雷因\n特洛耶特。");
         waitForClick();
         cls();
     }
