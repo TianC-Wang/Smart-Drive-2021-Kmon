@@ -19,22 +19,56 @@ const int snR                         = 3;
 const int snL                         = 4;
 /// @brief The Sonar of Front.
 const int snF                         = 5;
-/// @brief The Expected Position of The Cart on Road.
-const int expect                      = 550;
-/// @brief The Proportion The Cart Clear its Offset from The Expected Position on Road.
-const int kp                          = 1.8;
 /// @brief Get The Grayscale Value of a Sensor.
-/// @param index The Target Sensor Index.
+/// @param _Index The Target Sensor Index.
 /// @return Grayscale Value(0~1023).
-int (*const getGrayscale)(int index)  = geteadc;
+int (*const getGrayscale)(int _Index)  = geteadc;
 /// @brief Get The Distance Value of a Sonar.
-/// @param index The Target Sonar Index.
+/// @param _Index The Target Sonar Index.
 /// @return Distance Value(0~1023).
-int (*const getDistance)(int index)   = getadc;
+int (*const getDistance)(int _Index)   = getadc;
 #pragma endregion
 
 #pragma region /* ----- Header ----- */
+/// @brief The Driver Function Index.
+unsigned int driver;
+
+/// @brief The Wall Tracker Function Index.
+unsigned int walltracker;
+
+/// @brief The Camera Monitor Funtion Index.
+unsigned int cameramonitor;
+
+/// @brief The Safe Guard Function Index.
+unsigned int safeguard;
+
+/// @brief The Object Grabber Function Index.
+unsigned int grabber;
+
+/// @brief A Unit of an Async Function.
+struct asyncFunc
+{
+    /// @brief The Time Before The Next Run.
+    unsigned int sleepFrames;
+    /// @brief Whether This Function is Running.
+    bool         isRunning;
+    /// @brief The Function.
+    /// @param _This The Current Async Function Index.
+    void       (*function)(unsigned int _This);
+};
+
+/// @brief The Pool of The Async Function.
+struct asyncFunc asyncFuncPool[5] =
+{
+    { 0, false, 0 },
+    { 0, false, 0 },
+    { 0, false, 0 },
+    { 0, false, 0 },
+    { 0, false, 0 }
+};
+
 /// @brief Get The Absolute Value.
+/// @param _Num The Number.
 float absf(float _Num)
 {
     if (_Num > 0)
@@ -55,44 +89,33 @@ struct
     float rTgtSpeed;
     /// @brief Speed Follow Ratio.
     float ratio;
-} drivetrain = { 0, 0, 0, 0, .0025f };
+} drivetrain = { .0f, .0f, .0f, .0f, .005f };
 
-/// @brief A Unit of an Async Function.
-struct asyncFunc
+/// @brief Wall Tracking Parameters.
+struct
 {
-    /// @brief The Time Before The Next Run.
-    unsigned int sleepFrames;
-    /// @brief Whether This Function is Running.
-    bool         isRunning;
-    /// @brief The Function.
-    /// @param _This The Current Async Function Index.
-    void       (*function)(unsigned int _This);
-};
+    /// @brief Target Position.
+    float tgt;
+    /// @brief Error.
+    float err;
+    /// @brief Previous Error.
+    float preErr;
+    /// @brief Proportional Parameter.
+    float kp;
+    /// @brief Integal Parameter.
+    float ki;
+    /// @brief Differencial Parameter.
+    float kd;
+    /// @brief Base Speed.
+    float baseSpeed;
+} walltracking = { 450.f, .0f, .0f, .75f, .0f, 100.f, 500.f };
 
-/// @brief Output Speed.
-/// @param _This The Current Async Function Index.
-void driveAsync(unsigned int _This)
+struct
 {
-    go((int)drivetrain.lSpeed, (int)drivetrain.rSpeed);
-    if (absf(drivetrain.lSpeed - drivetrain.lTgtSpeed) < 20.f)
-        drivetrain.lSpeed = drivetrain.lTgtSpeed;
-    else
-        drivetrain.lSpeed += (drivetrain.lTgtSpeed - drivetrain.lSpeed) * drivetrain.ratio;
-    if (absf(drivetrain.rSpeed - drivetrain.rTgtSpeed) < 20.f)
-        drivetrain.rSpeed = drivetrain.rTgtSpeed;
-    else
-        drivetrain.rSpeed += (drivetrain.rTgtSpeed - drivetrain.rSpeed) * drivetrain.ratio;
-}
+    unsigned int safeDistance;
+} safeoptions = { 500 };
 
-/// @brief The Pool of The Async Function.
-struct asyncFunc asyncFuncPool[5] =
-{
-    { 0, false, 0 },
-    { 0, false, 0 },
-    { 0, false, 0 },
-    { 0, false, 0 },
-    { 0, false, 0 }
-};
+
 
 /// @brief Start an Async Function to The Pool.
 /// @param _Func The Target Function.
@@ -109,9 +132,148 @@ unsigned int startAsyncFunc(void (*_Func)(unsigned int))
             return i;
         }
 }
+
+/// @brief Clean an Async Function in The Pool.
+/// @param _Index The Function Index.
+void cleanAsyncFunc(unsigned int _Index)
+{
+    asyncFuncPool[_Index].isRunning = false;
+    asyncFuncPool[_Index].sleepFrames = 0;
+    asyncFuncPool[_Index].function = 0;
+}
+
+/// @brief Stop an Async Function in The Pool.
+/// @param _Index The Function Index.
+void stopAsyncFunc(unsigned int _Index)
+{
+    asyncFuncPool[_Index].isRunning = false;
+}
+
+void stopAllAsyncFunc(void)
+{
+    unsigned int i;
+    for (i = 0; i < 5; i++)
+        asyncFuncPool[i].isRunning = false;
+}
+
+/// @brief Resume an Async Function in The Pool.
+/// @param _Index The Function Index.
+void resumeAsyncFunc(unsigned int _Index)
+{
+    asyncFuncPool[_Index].isRunning = true;
+}
+
+/// @brief Sleep an Async Function in The Pool.
+/// @param _Index The Function Index.
+/// @param _FrameCount The Sleep Frame Count.
+void sleepAsyncFunc(unsigned int _Index, unsigned int _FrameCount)
+{
+    asyncFuncPool[_Index].sleepFrames = _FrameCount;
+}
+
+/// @brief Change Drivetrain Speed Smoothly.
+/// @param _LSpeed Left Speed.
+/// @param _RSpeed Right Speed.
+void setSpeed(float _LSpeed, float _RSpeed)
+{
+    stopAsyncFunc(walltracker);
+    resumeAsyncFunc(driver);
+    drivetrain.lTgtSpeed = _LSpeed;
+    drivetrain.rTgtSpeed = _RSpeed;
+}
+
+/// @brief Change Drivetrain Speed Directly.
+/// @param _LSpeed Left Speed.
+/// @param _RSpeed Right Speed.
+void setSpeed_HARD(float _LSpeed, float _RSpeed)
+{
+    stopAsyncFunc(walltracker);
+    resumeAsyncFunc(driver);
+    drivetrain.lSpeed = drivetrain.lTgtSpeed = _LSpeed;
+    drivetrain.rSpeed = drivetrain.rTgtSpeed = _RSpeed;
+}
+
+/// @brief Change Wall Tracking Speed Smoothly.
+/// @param _Speed The Speed.
+void setWallTrackingSpeed(float _Speed)
+{
+    walltracking.baseSpeed = _Speed;
+    resumeAsyncFunc(walltracker);
+}
+
+/// @brief Change Wall Tracking Speed Directly.
+void setWallTrackingSpeed_HARD(float _Speed)
+{
+    setSpeed_HARD(_Speed, _Speed);
+    walltracking.baseSpeed = _Speed;
+    resumeAsyncFunc(walltracker);
+}
+
+/// @brief Output Speed.
+/// @param _This The Current Async Function Index.
+void driveAsync(unsigned int _This)
+{
+    go((int)drivetrain.lSpeed, (int)drivetrain.rSpeed);
+    if (!(drivetrain.lSpeed - drivetrain.lTgtSpeed || drivetrain.rSpeed - drivetrain.rTgtSpeed))
+        stopAsyncFunc(_This);
+    if (absf(drivetrain.lSpeed - drivetrain.lTgtSpeed) < 20.f)
+        drivetrain.lSpeed = drivetrain.lTgtSpeed;
+    else
+        drivetrain.lSpeed += (drivetrain.lTgtSpeed - drivetrain.lSpeed) * drivetrain.ratio;
+    if (absf(drivetrain.rSpeed - drivetrain.rTgtSpeed) < 20.f)
+        drivetrain.rSpeed = drivetrain.rTgtSpeed;
+    else
+        drivetrain.rSpeed += (drivetrain.rTgtSpeed - drivetrain.rSpeed) * drivetrain.ratio;
+}
+
+/// @brief Track Wall.
+/// @param _This The Current Async Function Index.
+void wallTrackAsync(unsigned int _This)
+{
+    walltracking.err = getDistance(snR) - walltracking.tgt;
+    setSpeed(walltracking.baseSpeed - 1.25f * walltracking.err * walltracking.kp + (walltracking.preErr - walltracking.err) * walltracking.kd * .75f,
+        walltracking.baseSpeed + .75f * walltracking.err * walltracking.kp - (walltracking.preErr - walltracking.err) * walltracking.kd * 1.25f);
+    walltracking.preErr = walltracking.err;
+}
+
+/// @brief QR Code Monitor.
+/// @param _This The Current Async Function Index.
+void monitorAsync(unsigned int _This)
+{
+}
+
+/// @brief Safe Guard.
+/// @param _This The Current Async Function Index.
+void safeAsync(unsigned int _This)
+{
+    if (getDistance(snF) > safeoptions.safeDistance)
+        if (asyncFuncPool[walltracker].isRunning)
+            setWallTrackingSpeed_HARD(0);
+        else
+            setSpeed_HARD(0, 0);
+}
+
+/// @brief Grab Object.
+/// @param _This The Current Async Function Index.
+void grabAsync(unsigned int _This)
+{
+}
+
+/// @brief Release Object.
+/// @param _This The Current Async Function Index.
+void releaseAsync(unsigned int _This)
+{
+}
 #pragma endregion
 
 #pragma region /* ----- Main ----- */
+void start(void)
+{
+    driver = startAsyncFunc(driveAsync);
+    walltracker = startAsyncFunc(wallTrackAsync);
+    stopAllAsyncFunc();
+}
+
 /// @brief Run a Frame.
 void frame(void)
 {
@@ -134,18 +296,81 @@ void waitForFrames(unsigned int _FrameCount)
         frame();
 }
 
+/// @brief Wait for a Function's Completion.
+/// @param _Index The Function Index.
+void waitForComplete(unsigned int _Index)
+{
+    while (asyncFuncPool[_Index].isRunning)
+        frame();
+}
+
+/// @brief Wait for a Button Click.
+void waitForClick(void)
+{
+    while (!trigger()) frame();
+    while (trigger()) frame();
+}
+
+/// @brief Wait The Sonar to Cross a Threshold Value.
+/// @param _Index The Sonar Index.
+/// @param _Val The Threshold Value.
+void waitForSonarPass(unsigned int _Index, float _Val)
+{
+    if (getDistance(_Index) > _Val)
+        while(getDistance(_Index) > _Val)
+            frame();
+    else
+        while(getDistance(_Index) < _Val)
+            frame();
+}
+
+/// @brief Wait The Grayscale to Cross a Threshold Value.
+/// @param _Index The Grayscale Index.
+/// @param _Val The Threshold Value.
+void waitForGrayscalePass(unsigned int _Index, float _Val)
+{
+    if (getGrayscale(_Index) > _Val)
+        while(getGrayscale(_Index) > _Val)
+            frame();
+    else
+        while(getGrayscale(_Index) < _Val)
+            frame();
+}
+
 /// @brief Program Entrance.
 /// @return Don't Matter. lol.
 int main(void)
 {
-    startAsyncFunc(driveAsync);
-    drivetrain.lTgtSpeed = 400;
-    drivetrain.rTgtSpeed = 400;
-    waitForFrames(2000);
-    drivetrain.lTgtSpeed = 0;
-    drivetrain.rTgtSpeed = 0;
-    waitForFrames(1200);
-    printf("Done!");
-    return 0;
+    unsigned int i;
+    unsigned int wc;
+    while (true)
+    {
+        for (i = 0; i < 5; i++)
+            cleanAsyncFunc(i);
+        cls();
+        printf("\n\n\nPress Button\nto Start...\n\n信仰与悸动之间的，\n便是你。");
+        waitForClick();
+        cls();
+        driver = startAsyncFunc(driveAsync);
+
+        /* ---------- */
+
+        waitForFrames(1000);
+        setWallTrackingSpeed(300.f);
+        wc = startAsyncFunc(wallTrackAsync);
+        waitForFrames(1000);
+        setWallTrackingSpeed(.0f);
+        waitForFrames(3000);
+        stopAsyncFunc(wc);
+        setSpeed(0.f, 0.f);
+        waitForComplete(driver);
+
+        /* ---------- */
+
+        cls();
+        printf("\n\n\nProgram Ended.\n\n\n消散在宇宙中，\n或许不是你我的终究。");
+        waitForClick();
+        cls();
+    }
 }
 #pragma endregion
