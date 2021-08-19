@@ -372,7 +372,7 @@ int main(void)
         /* ---------- */
 
         cls();
-        printf("\n\n\n\n蓝色的玫瑰，折射的天空，\n消散的，骑士\n斯雷因\n特洛耶特。");
+        printf("\n\n\n——蓝色的玫瑰，\n折射的天空，\n消散的，骑士\n斯雷因\n特洛耶特。");
         waitForClick();
         cls();
     }
