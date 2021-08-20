@@ -1,3 +1,9 @@
 .vs/
 .vscode/
 test.*
+*.jpg
+*.png
+*.bmp
+*.mp3
+*.mp4
+*.flac
