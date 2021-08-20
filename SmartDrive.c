@@ -30,6 +30,9 @@ int (*const getDistance)(int _Index)  = getadc;
 #pragma endregion
 
 #pragma region /* ----- Header ----- */
+#define waitUntil(__CONDI) \
+while (!(__CONDI)) frame()
+
 /// @brief The Driver Function Index.
 unsigned int driver;
 
@@ -103,6 +106,14 @@ struct
     /// @brief Base Speed.
     float baseSpeed;
 } walltracking = { 500.f, .0f, .0f, 1.2f, .0f, 100.f, 500.f };
+
+/// @brief Turning Parameters.
+struct
+{
+    float speedRatio;
+    float wallTach;
+} turning = { 13.f, 370.f };
+
 
 struct
 {
@@ -252,6 +263,62 @@ void wallTrackAsync(unsigned int _This)
     resumeAsyncFunc(walltracker);
 }
 
+/// @brief Turn Left.
+/// @param _This The Current Async Function Index.
+void turnLeftAsync(unsigned int _This)
+{
+    static unsigned char step = 0;
+    switch(step)
+    {
+        case 0:
+            syncSpeed_HARD();
+            setSpeed(turning.speedRatio * 22.f, turning.speedRatio * 33.f);
+            step++;
+            break;
+        case 1:
+            if (getDistance(snR) <= 200.f)
+                step++;
+            break;
+        case 2:
+            if (getDistance(snR) >= turning.wallTach)
+                step++;
+            break;
+        case 3:
+            stopAsyncFunc(_This);
+            cleanAsyncFunc(_This);
+            step = 0;
+            break;
+    }
+}
+
+/// @brief Turn Right.
+/// @param _This The Current Async Function Index.
+void turnRightAsync(unsigned int _This)
+{
+    static unsigned char step = 0;
+    switch(step)
+    {
+        case 0:
+            syncSpeed_HARD();
+            setSpeed(turning.speedRatio * 32.f, turning.speedRatio * 18.f);
+            step++;
+            break;
+        case 1:
+            if (getDistance(snR) <= 200.f)
+                step++;
+            break;
+        case 2:
+            if (getDistance(snR) >= turning.wallTach)
+                step++;
+            break;
+        case 3:
+            stopAsyncFunc(_This);
+            cleanAsyncFunc(_This);
+            step = 0;
+            break;
+    }
+}
+
 /// @brief QR Code Monitor.
 /// @param _This The Current Async Function Index.
 void monitorAsync(unsigned int _This)
@@ -358,28 +425,6 @@ void waitForGrayscalePass(unsigned int _Index, float _Val)
             frame();
 }
 
-/// @brief Have a Turn towards a Direction.
-/// @param _Direction Right(0) or Left(1).
-/// @param _SpeedRatio Speed Ratio, Literally ~15.
-void turn(unsigned char _Direction, float _SpeedRatio)
-{
-    switch (_Direction)
-    {
-        case 0:
-            syncSpeed_HARD();
-            setSpeed(_SpeedRatio * 32.f, _SpeedRatio * 18.f);
-            waitForSonarPass(snR, 200.f);
-            waitForSonarPass(snR, 320.f);
-            break;
-        case 1:
-            syncSpeed_HARD();
-            setSpeed(_SpeedRatio * 22.f, _SpeedRatio * 33.f);
-            waitForSonarPass(snR, 200.f);
-            waitForSonarPass(snR, 320.f);
-            break;
-    }
-}
-
 /// @brief Program Entrance.
 /// @return Don't Matter. lol.
 int main(void)
@@ -397,17 +442,17 @@ int main(void)
 
         /* ---------- */
         
-        turn(0, 13);
+        waitForComplete(startAsyncFunc(turnRightAsync));
         setWallTrackingSpeed(300.f);
-        waitForSonarPass(snF, 370.f);
+        waitForSonarPass(snF, 320.f);
         setSpeed(.0f, .0f);
         waitForComplete(driver);
         
         waitForClick();
 
-        turn(1, 13);
+        waitForComplete(startAsyncFunc(turnLeftAsync));
         setWallTrackingSpeed(300.f);
-        waitForSonarPass(snF, 370.f);
+        waitForSonarPass(snF, 320.f);
         setSpeed(.0f, .0f);
         waitForComplete(driver);
 
