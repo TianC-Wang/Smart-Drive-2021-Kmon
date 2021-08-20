@@ -36,14 +36,8 @@ unsigned int driver;
 /// @brief The Wall Tracker Function Index.
 unsigned int walltracker;
 
-/// @brief The Camera Monitor Funtion Index.
-unsigned int cameramonitor;
-
 /// @brief The Safe Guard Function Index.
 unsigned int safeguard;
-
-/// @brief The Object Grabber Function Index.
-unsigned int grabber;
 
 /// @brief A Unit of an Async Function.
 struct asyncFunc
@@ -108,7 +102,7 @@ struct
     float kd;
     /// @brief Base Speed.
     float baseSpeed;
-} walltracking = { 450.f, .0f, .0f, .75f, .0f, 100.f, 500.f };
+} walltracking = { 500.f, .0f, .0f, 1.2f, .0f, 100.f, 500.f };
 
 struct
 {
@@ -218,6 +212,18 @@ void setWallTrackingSpeed_HARD(float _Speed)
     resumeAsyncFunc(walltracker);
 }
 
+/// @brief Sync Double Side Drivetrain Speed Smoothly.
+void syncSpeed(void)
+{
+    setSpeed((drivetrain.lSpeed + drivetrain.rSpeed) / 2.f, (drivetrain.lSpeed + drivetrain.rSpeed) / 2.f);
+}
+
+/// @brief Sync Double Side Drivetrain Speed Directly.
+void syncSpeed_HARD(void)
+{
+    setSpeed_HARD((drivetrain.lSpeed + drivetrain.rSpeed) / 2.f, (drivetrain.lSpeed + drivetrain.rSpeed) / 2.f);
+}
+
 /// @brief Output Speed.
 /// @param _This The Current Async Function Index.
 void driveAsync(unsigned int _This)
@@ -240,8 +246,8 @@ void driveAsync(unsigned int _This)
 void wallTrackAsync(unsigned int _This)
 {
     walltracking.err = getDistance(snR) - walltracking.tgt;
-    setSpeed(walltracking.baseSpeed - 1.25f * walltracking.err * walltracking.kp + (walltracking.preErr - walltracking.err) * walltracking.kd * .75f,
-        walltracking.baseSpeed + .75f * walltracking.err * walltracking.kp - (walltracking.preErr - walltracking.err) * walltracking.kd * 1.25f);
+    setSpeed(walltracking.baseSpeed - 1.6f * walltracking.err * walltracking.kp + (walltracking.preErr - walltracking.err) * walltracking.kd * .25f,
+        walltracking.baseSpeed + .4f * walltracking.err * walltracking.kp - (walltracking.preErr - walltracking.err) * walltracking.kd * 1.75f);
     walltracking.preErr = walltracking.err;
     resumeAsyncFunc(walltracker);
 }
@@ -261,6 +267,8 @@ void safeAsync(unsigned int _This)
         go(0, 0);
         while (getDistance(snF) > safeoptions.safeDistance)
             wait(.001f);
+        drivetrain.lSpeed = drivetrain.rSpeed = 0;
+        resumeAsyncFunc(driver);
     }
 }
 
@@ -350,37 +358,63 @@ void waitForGrayscalePass(unsigned int _Index, float _Val)
             frame();
 }
 
+/// @brief Have a Turn towards a Direction.
+/// @param _Direction Right(0) or Left(1).
+/// @param _SpeedRatio Speed Ratio, Literally ~15.
+void turn(unsigned char _Direction, float _SpeedRatio)
+{
+    switch (_Direction)
+    {
+        case 0:
+            syncSpeed_HARD();
+            setSpeed(_SpeedRatio * 32.f, _SpeedRatio * 18.f);
+            waitForSonarPass(snR, 200.f);
+            waitForSonarPass(snR, 320.f);
+            break;
+        case 1:
+            syncSpeed_HARD();
+            setSpeed(_SpeedRatio * 22.f, _SpeedRatio * 33.f);
+            waitForSonarPass(snR, 200.f);
+            waitForSonarPass(snR, 320.f);
+            break;
+    }
+}
+
 /// @brief Program Entrance.
 /// @return Don't Matter. lol.
 int main(void)
 {
     unsigned int i;
-    unsigned int wc;
     while (true)
     {
         for (i = 0; i < 5; i++)
             cleanAsyncFunc(i);
         cls();
-        printf("\n\n\n那信仰与依恋之间的，\n便是你，公主\n艾瑟依拉姆\n薇瑟\n艾莉欧斯亚。");
+        printf("\n\n\n那信仰与依恋之间的，\n便是你，公主，\n艾瑟依拉姆\n薇瑟\n艾莉欧斯亚。");
         waitForClick();
         cls();
         start();
 
         /* ---------- */
-
-        setWallTrackingSpeed(400.f);
-        waitForSonarPass(snF, 400.f);
-        setSpeed(-200.f, 200.f);
-        waitForSonarPass(snF, 300.f);
+        
+        turn(0, 13);
         setWallTrackingSpeed(300.f);
-        waitForSonarPass(snF, 400.f);
+        waitForSonarPass(snF, 370.f);
+        setSpeed(.0f, .0f);
+        waitForComplete(driver);
+        
+        waitForClick();
+
+        turn(1, 13);
+        setWallTrackingSpeed(300.f);
+        waitForSonarPass(snF, 370.f);
         setSpeed(.0f, .0f);
         waitForComplete(driver);
 
         /* ---------- */
 
         cls();
-        printf("\n\n\n——蓝色的玫瑰，\n折射的天空，\n消散的，骑士\n斯雷因\n特洛耶特。");
+        printf("\n\n\n——蓝色的玫瑰，\n    折射的天空，\n消散的，骑士，\n斯雷因\n特洛耶特。");
         waitForClick();
         cls();
     }
