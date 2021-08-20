@@ -13,10 +13,10 @@ const int gsR1                        = 4;
 const int gsR2                        = 5;
 /// @brief The 3rd Grayscale of Right.
 const int gsR3                        = 6;
-/// @brief The Sonar of Right.
-const int snR                         = 3;
-/// @brief The Sonar of Left.
-const int snL                         = 4;
+/// @brief The Sonar of Right Front.
+const int snRF                        = 3;
+/// @brief The Sonar of Right Rear.
+const int snRR                        = 4;
 /// @brief The Sonar of Front.
 const int snF                         = 5;
 /// @brief Get The Grayscale Value of a Sensor.
@@ -86,7 +86,11 @@ struct
     float rTgtSpeed;
     /// @brief Speed Follow Ratio.
     float ratio;
-} drivetrain = { .0f, .0f, .0f, .0f, .005f };
+    /// @brief The Normal Ratio.
+    float ratioNorm;
+    /// @brief The Sensitive Ratio.
+    float ratioSpec;
+} drivetrain = { .0f, .0f, .0f, .0f, .005f, .005f, .33f };
 
 /// @brief Wall Tracking Parameters.
 struct
@@ -105,18 +109,43 @@ struct
     float kd;
     /// @brief Base Speed.
     float baseSpeed;
-} walltracking = { 500.f, .0f, .0f, 1.2f, .0f, 100.f, 500.f };
+} walltracking = { 500.f, .0f, .0f, .75f, .0f, 100.f, 300.f };
 
 /// @brief Turning Parameters.
 struct
 {
+    /// @brief Speed Ratio.
     float speedRatio;
+    /// @brief Wall Tach Distance.
     float wallTach;
-} turning = { 13.f, 370.f };
+} turning = { 13.f, 375.f };
 
-
+/// @brief Line Aligning Parameters.
 struct
 {
+    /// @brief The Left Side Final Align.
+    float divL3;
+    /// @brief The Left Side Line Crack-in.
+    float divL2;
+    /// @brief The Left Side Line Crack-in.
+    float divL1;
+    /// @brief The Right Side Line Crack-in.
+    float divR1;
+    /// @brief The Right Side Line Crack-in.
+    float divR2;
+    /// @brief The Right Side Final Align.
+    float divR3;
+    /// @brief The Beginning Speed.
+    float startSpeed;
+    /// @brief The Aligning Speed.
+    float alignSpeed;
+} linealigning = { 220.f, 300.f, 300.f, 400.f, 0.f, 280.f, 250.f, 150.f };
+
+
+/// @brief Safe Options.
+struct
+{
+    /// @brief The Smallest Safe Distance from Cart Ahead.
     unsigned int safeDistance;
 } safeoptions = { 500 };
 
@@ -181,7 +210,7 @@ void sleepAsyncFunc(unsigned int _Index, unsigned int _FrameCount)
 /// @param _RSpeed Right Speed.
 void setSpeed(float _LSpeed, float _RSpeed)
 {
-    if (!((int)_LSpeed || (int)_RSpeed))
+    if (_LSpeed <= 0 || _RSpeed <= 0)
         stopAsyncFunc(safeguard);
     else
         resumeAsyncFunc(safeguard);
@@ -256,9 +285,11 @@ void driveAsync(unsigned int _This)
 /// @param _This The Current Async Function Index.
 void wallTrackAsync(unsigned int _This)
 {
-    walltracking.err = getDistance(snR) - walltracking.tgt;
-    setSpeed(walltracking.baseSpeed - 1.6f * walltracking.err * walltracking.kp + (walltracking.preErr - walltracking.err) * walltracking.kd * .25f,
-        walltracking.baseSpeed + .4f * walltracking.err * walltracking.kp - (walltracking.preErr - walltracking.err) * walltracking.kd * 1.75f);
+    drivetrain.ratio = drivetrain.ratioSpec;
+    float l = walltracking.baseSpeed - 1.6f * walltracking.err * walltracking.kp + (walltracking.preErr - walltracking.err) * walltracking.kd * .25f;
+    float r = walltracking.baseSpeed + .4f * walltracking.err * walltracking.kp - (walltracking.preErr - walltracking.err) * walltracking.kd * 1.75f;
+    walltracking.err = getDistance(snRF) - walltracking.tgt;
+    setSpeed(l, r);
     walltracking.preErr = walltracking.err;
     resumeAsyncFunc(walltracker);
 }
@@ -272,19 +303,18 @@ void turnLeftAsync(unsigned int _This)
     {
         case 0:
             syncSpeed_HARD();
-            setSpeed(turning.speedRatio * 22.f, turning.speedRatio * 33.f);
+            setSpeed(turning.speedRatio * 21.f, turning.speedRatio * 33.f);
             step++;
             break;
         case 1:
-            if (getDistance(snR) <= 200.f)
+            if (getDistance(snRF) <= 200.f)
                 step++;
             break;
         case 2:
-            if (getDistance(snR) >= turning.wallTach)
+            if (getDistance(snRF) >= turning.wallTach)
                 step++;
             break;
         case 3:
-            stopAsyncFunc(_This);
             cleanAsyncFunc(_This);
             step = 0;
             break;
@@ -300,21 +330,74 @@ void turnRightAsync(unsigned int _This)
     {
         case 0:
             syncSpeed_HARD();
-            setSpeed(turning.speedRatio * 32.f, turning.speedRatio * 18.f);
+            setSpeed(turning.speedRatio * 34.f, turning.speedRatio * 16.f);
             step++;
             break;
         case 1:
-            if (getDistance(snR) <= 200.f)
+            if (getDistance(snRF) <= 200.f)
                 step++;
             break;
         case 2:
-            if (getDistance(snR) >= turning.wallTach)
+            if (getDistance(snRF) >= turning.wallTach)
                 step++;
             break;
         case 3:
-            stopAsyncFunc(_This);
             cleanAsyncFunc(_This);
             step = 0;
+            break;
+    }
+}
+
+/// @brief Line Align.
+/// @param _This The Current Async Function Index.
+void lineAlignAsync(unsigned int _This)
+{
+    static unsigned char step = 0;
+    drivetrain.ratio = drivetrain.ratioSpec;
+    switch (step)
+    {
+        case 0:
+            syncSpeed_HARD();
+            setSpeed(linealigning.startSpeed, linealigning.startSpeed);
+            step++;
+            break;
+        case 1:
+            if (getGrayscale(gsL2) <= linealigning.divL2 || getGrayscale(gsL1) <= linealigning.divL1 ||
+                getGrayscale(gsR1) <= linealigning.divR1 || getGrayscale(gsR2) <= linealigning.divR2)
+                step++;
+            break;
+        case 2:
+            setSpeed(linealigning.alignSpeed, linealigning.alignSpeed);
+            step++;
+            break;
+        case 3:
+            if (getGrayscale(gsL3) <= linealigning.divL3)
+                step++;
+            if (getGrayscale(gsR3) <= linealigning.divR3)
+                step += 3;
+            break;
+        case 4:
+            setSpeed(.0f, linealigning.alignSpeed);
+            step++;
+            break;
+        case 5:
+            if (getGrayscale(gsR3) <= linealigning.divR3)
+                step += 3;
+            break;
+        case 6:
+            setSpeed(linealigning.alignSpeed, .0f);
+            step++;
+            break;
+        case 7:
+            if (getGrayscale(gsL3) <= linealigning.divL3)
+                step++;
+            break;
+        case 8:
+            drivetrain.ratio = drivetrain.ratioNorm;
+            step = 0;
+            setSpeed(.0f, .0f);
+            stopAsyncFunc(_This);
+            cleanAsyncFunc(_This);
             break;
     }
 }
@@ -442,17 +525,32 @@ int main(void)
 
         /* ---------- */
         
+        setSpeed(250.f, 250.f);
+        waitForFrames(1000);
+        waitForComplete(startAsyncFunc(lineAlignAsync));
         waitForComplete(startAsyncFunc(turnRightAsync));
         setWallTrackingSpeed(300.f);
-        waitForSonarPass(snF, 320.f);
-        setSpeed(.0f, .0f);
-        waitForComplete(driver);
-        
-        waitForClick();
-
+        waitForFrames(500);
+        waitForComplete(startAsyncFunc(lineAlignAsync));
+        waitForComplete(startAsyncFunc(turnRightAsync));
+        setWallTrackingSpeed(300.f);
+        waitForSonarPass(snF, 260.f);
+        drivetrain.ratio = drivetrain.ratioNorm;
+        setSpeed(-100.f, 300.f);
+        waitForFrames(800);
+        setWallTrackingSpeed(300.f);
+        waitForSonarPass(snF, 260.f);
+        drivetrain.ratio = drivetrain.ratioNorm;
+        setSpeed(-100.f, 300.f);
+        waitForFrames(800);
+        setWallTrackingSpeed(300.f);
+        waitForFrames(2000);
+        waitForComplete(startAsyncFunc(lineAlignAsync));
         waitForComplete(startAsyncFunc(turnLeftAsync));
         setWallTrackingSpeed(300.f);
-        waitForSonarPass(snF, 320.f);
+        waitForFrames(1000);
+        waitForComplete(startAsyncFunc(lineAlignAsync));
+        drivetrain.ratio = drivetrain.ratioNorm;
         setSpeed(.0f, .0f);
         waitForComplete(driver);
 
@@ -465,3 +563,4 @@ int main(void)
     }
 }
 #pragma endregion
+
