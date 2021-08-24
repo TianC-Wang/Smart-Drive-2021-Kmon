@@ -453,7 +453,7 @@ void frame(void)
                 asyncFuncPool[i].sleepFrames--;
             else
                 asyncFuncPool[i].function(i);
-    wait(.001f);
+    wait(.001);
 }
 
 /// @brief Wait for Some Frames.
@@ -534,12 +534,12 @@ int main(void)
         waitForComplete(startAsyncFunc(lineAlignAsync));
         waitForComplete(startAsyncFunc(turnRightAsync));
         setWallTrackingSpeed(300.f);
-        waitForSonarPass(snF, 260.f);
+        waitForSonarPass(snF, 240.f);
         drivetrain.ratio = drivetrain.ratioNorm;
         setSpeed(-100.f, 300.f);
         waitForFrames(800);
         setWallTrackingSpeed(300.f);
-        waitForSonarPass(snF, 260.f);
+        waitForSonarPass(snF, 240.f);
         drivetrain.ratio = drivetrain.ratioNorm;
         setSpeed(-100.f, 300.f);
         waitForFrames(800);
@@ -550,6 +550,13 @@ int main(void)
         setWallTrackingSpeed(300.f);
         waitForFrames(1000);
         waitForComplete(startAsyncFunc(lineAlignAsync));
+        waitForComplete(startAsyncFunc(turnRightAsync));
+        setWallTrackingSpeed(300.f);
+        waitForFrames(500);
+        waitForComplete(startAsyncFunc(lineAlignAsync));
+        waitForComplete(startAsyncFunc(turnLeftAsync));
+        setWallTrackingSpeed(300.f);
+        waitForSonarPass(snF, 240.f);
         drivetrain.ratio = drivetrain.ratioNorm;
         setSpeed(.0f, .0f);
         waitForComplete(driver);
